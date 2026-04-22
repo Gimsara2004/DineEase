@@ -1,33 +1,38 @@
 <?php
 include 'config/db.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name    = $_POST['name'];
-    $phone   = $_POST['phone'];
-    $email   = $_POST['email'];
-    $date    = $_POST['date'];
-    $time    = $_POST['time'];
-    $guests  = $_POST['guests'];
-    $message = $_POST['message'];
+header('Content-Type: application/json');
 
-    $stmt = $conn->prepare("INSERT INTO reservations 
-        (name, phone, email, date, time, guests, message) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)");
-    
-    $stmt->bind_param("sssssss", 
-        $name, $phone, $email, 
-        $date, $time, $guests, $message);
-    
-    if ($stmt->execute()) {
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name    = $conn->real_escape_string(trim($_POST['name']    ?? ''));
+    $phone   = $conn->real_escape_string(trim($_POST['phone']   ?? ''));
+    $email   = $conn->real_escape_string(trim($_POST['email']   ?? ''));
+    $date    = $conn->real_escape_string(trim($_POST['date']    ?? ''));
+    $time    = $conn->real_escape_string(trim($_POST['time']    ?? ''));
+    $guests  = intval($_POST['guests']  ?? 1);
+    $message = $conn->real_escape_string(trim($_POST['message'] ?? ''));
+
+    // Basic validation
+    if (!$name || !$phone || !$date || !$time) {
+        echo json_encode(["status" => "error", "message" => "Please fill all required fields."]);
+        exit();
+    }
+
+    $sql = "INSERT INTO reservations (name, phone, email, date, time, guests, message)
+            VALUES ('$name','$phone','$email','$date','$time',$guests,'$message')";
+
+    if ($conn->query($sql)) {
         echo json_encode([
             "status"  => "success",
-            "message" => "Reservation confirmed!"
+            "message" => "Thank you $name! Your reservation has been received. We will confirm shortly."
         ]);
     } else {
         echo json_encode([
             "status"  => "error",
-            "message" => "Something went wrong."
+            "message" => "Something went wrong. Please try again."
         ]);
     }
+} else {
+    echo json_encode(["status" => "error", "message" => "Invalid request."]);
 }
-?>git 
+?>
