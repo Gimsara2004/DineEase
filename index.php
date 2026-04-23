@@ -333,7 +333,7 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
       <?php while ($item = $starters->fetch_assoc()): ?>
         <div class="menu-card">
           <?php if ($item['image']): ?>
-            <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥗</div>
           <?php endif; ?>
@@ -356,7 +356,7 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
       <?php while ($item = $mains->fetch_assoc()): ?>
         <div class="menu-card">
           <?php if ($item['image']): ?>
-            <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍛</div>
           <?php endif; ?>
@@ -379,7 +379,7 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
       <?php while ($item = $desserts->fetch_assoc()): ?>
         <div class="menu-card">
           <?php if ($item['image']): ?>
-            <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍮</div>
           <?php endif; ?>
@@ -402,7 +402,7 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
       <?php while ($item = $drinks->fetch_assoc()): ?>
         <div class="menu-card">
           <?php if ($item['image']): ?>
-            <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥤</div>
           <?php endif; ?>
