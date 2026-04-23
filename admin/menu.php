@@ -20,7 +20,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
     // Handle image upload
     $image = '';
     if (!empty($_FILES['image']['name'])) {
-        $upload_dir = '../uploads/menu/';
+        $upload_dir = 'uploads/menu/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         $ext      = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
         $filename = time() . '_' . rand(100,999) . '.' . $ext;
@@ -399,7 +399,7 @@ $featured = $conn->query("SELECT COUNT(*) as c FROM menu_items WHERE is_featured
             <tr>
               <td>
                 <?php if ($item['image']): ?>
-                  <img src="../uploads/menu/<?= htmlspecialchars($item['image']) ?>"
+                  <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>"
                        class="img-thumb" alt=""/>
                 <?php else: ?>
                   <div class="no-img">🍽️</div>
@@ -456,4 +456,3 @@ function toggleForm() {
 </script>
 </body>
 </html>
-
