@@ -292,7 +292,10 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
 <!-- ── ABOUT ── -->
 <section id="about">
   <div class="about-img">
-    <div class="about-img-box"></div>
+    <div class="about-img-box" style="padding-bottom:110%; position:relative; overflow:hidden;">
+      <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80" 
+           style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" alt="Restaurant"/>
+    </div>
     <div class="about-badge">
       <span class="yr">Est.</span>
       <span class="yr-lbl">2005</span>
@@ -458,11 +461,21 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
     <h2 class="section-heading" style="color:#f5e6cc">A Feast for the <em>Eyes</em></h2>
   </div>
   <div class="gallery-grid">
-    <div class="gallery-cell" data-emoji="🦞"></div>
-    <div class="gallery-cell" data-emoji="🍛"></div>
-    <div class="gallery-cell" data-emoji="🦐"></div>
-    <div class="gallery-cell" data-emoji="🍷"></div>
-    <div class="gallery-cell" data-emoji="🥗"></div>
+    <div class="gallery-cell" style="background:none;">
+      <img src="https://images.unsplash.com/photo-1615361200141-f45040f367be?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Lobster"/>
+    </div>
+    <div class="gallery-cell" style="background:none;">
+      <img src="https://images.unsplash.com/photo-1596797038530-2c107229654b?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Prawn Curry"/>
+    </div>
+    <div class="gallery-cell" style="background:none;">
+      <img src="https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Fish"/>
+    </div>
+    <div class="gallery-cell" style="background:none;">
+      <img src="https://images.unsplash.com/photo-1551183053-bf91798d702e?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Pasta"/>
+    </div>
+    <div class="gallery-cell" style="background:none;">
+      <img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Dessert"/>
+    </div>
   </div>
 </section>
 
