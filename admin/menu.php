@@ -1,458 +1,651 @@
 <?php
-session_start();
-if (!isset($_SESSION['admin'])) {
-    header("Location: login.php");
-    exit();
-}
-include '../config/db.php';
+include 'config/db.php';
 
-$success = '';
-$error   = '';
-
-// ── ADD new item ────────────────────────────────────────────────────────────
-if (isset($_POST['action']) && $_POST['action'] === 'add') {
-    $name        = $conn->real_escape_string($_POST['name']);
-    $description = $conn->real_escape_string($_POST['description']);
-    $price       = floatval($_POST['price']);
-    $category    = $conn->real_escape_string($_POST['category']);
-    $is_featured = isset($_POST['is_featured']) ? 1 : 0;
-
-    // Handle image upload
-    $image = '';
-    if (!empty($_FILES['image']['name'])) {
-        $upload_dir = 'uploads/menu/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-        $ext      = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-        $filename = time() . '_' . rand(100,999) . '.' . $ext;
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename)) {
-            $image = $filename;
-        }
-    }
-
-    $sql = "INSERT INTO menu_items 
-            (name, description, price, category, image, is_featured, is_available)
-            VALUES ('$name','$description',$price,'$category','$image',$is_featured,1)";
-
-    if ($conn->query($sql)) {
-        $success = 'Menu item added successfully!';
-    } else {
-        $error = 'Failed to add item. Try again.';
-    }
-}
-
-// ── DELETE item ──────────────────────────────────────────────────────────────
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-    $conn->query("DELETE FROM menu_items WHERE id = $id");
-    header("Location: menu.php?deleted=1");
-    exit();
-}
-
-// ── TOGGLE availability ──────────────────────────────────────────────────────
-if (isset($_GET['toggle'])) {
-    $id   = intval($_GET['toggle']);
-    $item = $conn->query("SELECT is_available FROM menu_items WHERE id=$id")->fetch_assoc();
-    $new  = $item['is_available'] ? 0 : 1;
-    $conn->query("UPDATE menu_items SET is_available=$new WHERE id=$id");
-    header("Location: menu.php");
-    exit();
-}
-
-// ── TOGGLE featured ──────────────────────────────────────────────────────────
-if (isset($_GET['feature'])) {
-    $id   = intval($_GET['feature']);
-    $item = $conn->query("SELECT is_featured FROM menu_items WHERE id=$id")->fetch_assoc();
-    $new  = $item['is_featured'] ? 0 : 1;
-    $conn->query("UPDATE menu_items SET is_featured=$new WHERE id=$id");
-    header("Location: menu.php");
-    exit();
-}
-
-if (isset($_GET['deleted'])) $success = 'Item deleted successfully!';
-
-// ── GET all items ────────────────────────────────────────────────────────────
-$filter   = $_GET['cat'] ?? 'all';
-$where    = $filter !== 'all' ? "WHERE category='$filter'" : '';
-$items    = $conn->query("SELECT * FROM menu_items $where ORDER BY category, name");
-$total    = $conn->query("SELECT COUNT(*) as c FROM menu_items")->fetch_assoc()['c'];
-$available= $conn->query("SELECT COUNT(*) as c FROM menu_items WHERE is_available=1")->fetch_assoc()['c'];
-$featured = $conn->query("SELECT COUNT(*) as c FROM menu_items WHERE is_featured=1")->fetch_assoc()['c'];
+$starters  = $conn->query("SELECT * FROM menu_items WHERE category='starters'  AND is_available=1");
+$mains     = $conn->query("SELECT * FROM menu_items WHERE category='mains'     AND is_available=1");
+$desserts  = $conn->query("SELECT * FROM menu_items WHERE category='desserts'  AND is_available=1");
+$drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    AND is_available=1");
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Menu Management — Admin</title>
+  <title>DineEase — Fine Dining Restaurant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
   <style>
+    :root {
+      --primary: #c8913a;
+      --dark:    #1a1208;
+      --light:   #fdf6ec;
+      --text:    #3a2e1e;
+      --accent:  #8b0000;
+    }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Segoe UI',sans-serif; background:#f4f6f9; color:#333; }
+    body { font-family:'Lato',sans-serif; background:var(--light); color:var(--text); overflow-x:hidden; }
+    html { scroll-behavior:smooth; }
 
-    /* Sidebar */
-    .sidebar {
-      position:fixed; top:0; left:0;
-      width:240px; height:100vh;
-      background:#1a1208; padding:30px 0;
+    /* NAV */
+    nav {
+      position:fixed; top:0; width:100%; z-index:1000;
+      padding:0 60px; display:flex;
+      justify-content:space-between; align-items:center;
+      height:70px;
+      background:linear-gradient(to bottom, rgba(26,18,8,0.95), transparent);
+      transition:background 0.3s;
     }
-    .sidebar-logo {
-      font-size:22px; font-weight:700; color:#c8913a;
-      text-align:center; padding:0 20px 28px;
-      border-bottom:1px solid #2e2010;
-    }
-    .sidebar-logo span { font-size:12px; color:#8a7060; display:block; font-weight:400; }
-    .nav-item {
-      display:block; padding:14px 24px; color:#8a7060;
-      text-decoration:none; font-size:14px;
-      transition:all 0.2s; border-left:3px solid transparent;
-    }
-    .nav-item:hover, .nav-item.active {
-      color:#c8913a; background:rgba(200,145,58,0.08);
-      border-left-color:#c8913a;
-    }
-    .nav-item .icon { margin-right:10px; }
+    nav.scrolled { background:rgba(26,18,8,0.98); box-shadow:0 2px 20px rgba(0,0,0,0.3); }
+    .nav-logo { font-family:'Playfair Display',serif; font-size:22px; color:var(--primary); font-style:italic; text-decoration:none; }
+    .nav-links { display:flex; gap:32px; list-style:none; align-items:center; }
+    .nav-links a { color:#e8d5b0; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--primary); }
+    .nav-reserve { background:var(--primary); color:#fff !important; padding:8px 20px !important; letter-spacing:1px !important; transition:background 0.2s !important; }
+    .nav-reserve:hover { background:var(--accent) !important; }
+    .nav-toggle { display:none; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; }
 
-    /* Main */
-    .main { margin-left:240px; padding:32px; }
+    /* HERO */
+    #hero {
+      min-height:100vh;
+      background:linear-gradient(135deg, #1a1208 0%, #2d1f0a 50%, #1a1208 100%);
+      display:flex; align-items:center; justify-content:center;
+      text-align:center; position:relative; overflow:hidden;
+    }
+    #hero::before {
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(ellipse at center, rgba(200,145,58,0.12) 0%, transparent 70%);
+    }
+    .hero-pattern {
+      position:absolute; inset:0;
+      background-image:
+        repeating-linear-gradient(45deg,  transparent, transparent 40px, rgba(200,145,58,0.03) 40px, rgba(200,145,58,0.03) 41px),
+        repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(200,145,58,0.03) 40px, rgba(200,145,58,0.03) 41px);
+    }
+    .hero-content { position:relative; z-index:1; padding:40px 20px; }
+    .hero-tag {
+      display:inline-block; font-size:11px; letter-spacing:4px;
+      text-transform:uppercase; color:var(--primary);
+      border:1px solid rgba(200,145,58,0.4); padding:6px 20px;
+      margin-bottom:28px; animation:fadeUp 0.8s ease both;
+    }
+    .hero-title {
+      font-family:'Playfair Display',serif;
+      font-size:clamp(48px,8vw,90px);
+      color:#f5e6cc; line-height:1.05; margin-bottom:20px;
+      animation:fadeUp 0.8s 0.15s ease both;
+    }
+    .hero-title em { color:var(--primary); font-style:italic; }
+    .hero-desc {
+      font-size:16px; color:#b09070; max-width:520px;
+      margin:0 auto 36px; line-height:1.7; font-weight:300;
+      animation:fadeUp 0.8s 0.3s ease both;
+    }
+    .hero-btns { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; animation:fadeUp 0.8s 0.45s ease both; }
+    .btn-primary {
+      background:var(--primary); color:#fff; padding:14px 36px;
+      border:none; font-family:'Lato',sans-serif; font-size:12px;
+      font-weight:700; letter-spacing:2px; text-transform:uppercase;
+      cursor:pointer; text-decoration:none; transition:all 0.2s; display:inline-block;
+    }
+    .btn-primary:hover { background:var(--accent); transform:translateY(-2px); }
+    .btn-outline {
+      background:transparent; color:#e8d5b0; padding:14px 36px;
+      border:1px solid rgba(232,213,176,0.4); font-family:'Lato',sans-serif;
+      font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+      cursor:pointer; text-decoration:none; transition:all 0.2s; display:inline-block;
+    }
+    .btn-outline:hover { border-color:var(--primary); color:var(--primary); transform:translateY(-2px); }
+    .scroll-hint {
+      position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+    }
+    .scroll-hint span { font-size:10px; letter-spacing:3px; color:#8a7060; text-transform:uppercase; }
+    .scroll-line { width:1px; height:40px; background:linear-gradient(to bottom, var(--primary), transparent); animation:scrollPulse 1.5s infinite; }
 
-    .page-header {
-      display:flex; justify-content:space-between;
-      align-items:center; margin-bottom:28px;
-    }
-    .page-header h1 { font-size:24px; color:#1a1208; }
+    /* SECTION COMMONS */
+    .section-tag { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--primary); margin-bottom:14px; display:block; }
+    .section-heading { font-family:'Playfair Display',serif; font-size:clamp(30px,4vw,46px); line-height:1.15; margin-bottom:20px; }
+    .section-heading em { color:var(--primary); font-style:italic; }
+    .section-text { font-size:15px; color:#5a4e3e; line-height:1.8; font-weight:300; margin-bottom:16px; }
 
-    .btn-open-form {
-      background:#c8913a; color:#fff;
-      border:none; padding:10px 24px;
-      font-size:14px; font-weight:600;
-      cursor:pointer; border-radius:6px;
-      transition:background 0.2s;
+    /* ABOUT — real photo */
+    #about { padding:100px 60px; display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center; max-width:1200px; margin:0 auto; }
+    .about-img { position:relative; }
+    .about-img-box { width:100%; height:520px; position:relative; overflow:hidden; }
+    .about-img-box img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.6s ease; }
+    .about-img-box:hover img { transform:scale(1.04); }
+    .about-badge {
+      position:absolute; bottom:-20px; right:-20px;
+      background:var(--primary); color:#fff;
+      width:100px; height:100px; border-radius:50%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      font-family:'Playfair Display',serif; text-align:center;
     }
-    .btn-open-form:hover { background:#a87030; }
+    .about-badge .yr { font-size:22px; font-weight:700; }
+    .about-badge .yr-lbl { font-size:10px; letter-spacing:1px; }
+    .stats-row { display:flex; gap:32px; margin-top:32px; }
+    .stat { text-align:center; }
+    .stat-num { font-family:'Playfair Display',serif; font-size:36px; color:var(--primary); font-weight:700; }
+    .stat-lbl { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#8a7060; }
 
-    /* Alert */
-    .alert {
-      padding:12px 18px; border-radius:6px;
-      margin-bottom:20px; font-size:14px;
+    /* MENU */
+    #menu { background:var(--dark); padding:100px 60px; }
+    .menu-header { text-align:center; margin-bottom:48px; }
+    .menu-header .section-heading { color:#f5e6cc; }
+    .menu-tabs { display:flex; justify-content:center; gap:4px; margin-bottom:40px; flex-wrap:wrap; }
+    .tab-btn {
+      background:transparent; color:#8a7060;
+      border:1px solid #3a2e1e; padding:8px 24px;
+      font-family:'Lato',sans-serif; font-size:11px;
+      letter-spacing:2px; text-transform:uppercase;
+      cursor:pointer; transition:all 0.2s;
     }
-    .alert.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
-    .alert.error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+    .tab-btn.active, .tab-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .menu-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr));
+      gap:2px; max-width:1100px; margin:0 auto;
+    }
+    .menu-card {
+      background:#221a0a; overflow:hidden;
+      border:1px solid #2e2010;
+      transition:border-color 0.2s, transform 0.2s;
+    }
+    .menu-card:hover { border-color:var(--primary); transform:translateY(-3px); }
+    .menu-card-body { padding:20px 24px 24px; }
+    .menu-card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .menu-card-name { font-family:'Playfair Display',serif; font-size:18px; color:#f5e6cc; }
+    .menu-card-price { font-size:16px; color:var(--primary); font-weight:700; font-family:'Playfair Display',serif; white-space:nowrap; margin-left:8px; }
+    .menu-card-desc { font-size:13px; color:#7a6a54; line-height:1.6; }
+    .menu-card-img { width:100%; height:180px; object-fit:cover; display:block; transition:transform 0.4s ease; }
+    .menu-card:hover .menu-card-img { transform:scale(1.04); }
+    .menu-card-img-placeholder { width:100%; height:180px; background:linear-gradient(135deg,#2d1f0a,#4a3520); display:flex; align-items:center; justify-content:center; font-size:40px; }
+    .menu-tag { display:inline-block; margin-top:10px; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--primary); border:1px solid rgba(200,145,58,0.3); padding:3px 8px; }
+    .no-items { text-align:center; color:#5a4a32; padding:48px; font-size:15px; grid-column:1/-1; }
 
-    /* Stats */
-    .stats-row {
-      display:grid; grid-template-columns:repeat(3,1fr);
-      gap:20px; margin-bottom:28px;
+    /* SPECIALS */
+    #specials { padding:100px 60px; max-width:1200px; margin:0 auto; text-align:center; }
+    .specials-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; margin-top:48px; }
+    .special-card {
+      background:#fff; border:1px solid #e8d8c0; padding:40px 28px;
+      position:relative; transition:transform 0.2s, box-shadow 0.2s;
     }
-    .stat-card {
-      background:#fff; padding:20px 24px;
-      border-radius:8px; border-left:4px solid #c8913a;
-      box-shadow:0 2px 8px rgba(0,0,0,0.06);
-    }
-    .stat-card .num { font-size:32px; font-weight:700; color:#1a1208; }
-    .stat-card .label { font-size:12px; color:#888; margin-top:4px; }
+    .special-card:hover { transform:translateY(-6px); box-shadow:0 20px 40px rgba(200,145,58,0.1); }
+    .special-icon { font-size:40px; margin-bottom:16px; }
+    .special-card h3 { font-family:'Playfair Display',serif; font-size:22px; color:var(--dark); margin-bottom:12px; }
+    .special-card p { font-size:14px; color:#7a6a54; line-height:1.7; }
+    .special-ribbon { position:absolute; top:16px; right:16px; background:var(--accent); color:#fff; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; padding:4px 10px; }
 
-    /* Filter tabs */
-    .filter-tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
-    .filter-tab {
-      padding:7px 18px; border-radius:20px;
-      border:1px solid #ddd; background:#fff;
-      font-size:12px; cursor:pointer;
-      text-decoration:none; color:#555;
-      transition:all 0.2s;
+    /* GALLERY — real photos */
+    #gallery { background:var(--dark); padding:100px 60px; }
+    .gallery-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      grid-template-rows:repeat(2,220px); gap:4px;
+      max-width:1100px; margin:48px auto 0;
     }
-    .filter-tab:hover, .filter-tab.active {
-      background:#c8913a; color:#fff; border-color:#c8913a;
-    }
+    .gallery-cell { position:relative; overflow:hidden; cursor:pointer; background:#2d1f0a; }
+    .gallery-cell:first-child { grid-column:span 2; grid-row:span 2; }
+    .gallery-cell img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.5s ease; }
+    .gallery-cell:hover img { transform:scale(1.07); }
+    .gallery-cell::after { content:''; position:absolute; inset:0; background:rgba(200,145,58,0); transition:background 0.3s; pointer-events:none; }
+    .gallery-cell:hover::after { background:rgba(200,145,58,0.18); }
 
-    /* Add Item Form */
-    .add-form {
-      background:#fff; border-radius:8px;
-      padding:28px; margin-bottom:28px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.06);
-      display:none;
+    /* RESERVATION */
+    #reservation { padding:100px 60px; display:grid; grid-template-columns:1fr 1fr; gap:80px; max-width:1200px; margin:0 auto; }
+    .res-info h2 { font-family:'Playfair Display',serif; font-size:42px; color:var(--dark); margin-bottom:24px; }
+    .contact-detail { display:flex; gap:16px; align-items:flex-start; margin-bottom:20px; }
+    .contact-icon { width:44px; height:44px; min-width:44px; background:rgba(200,145,58,0.1); border:1px solid rgba(200,145,58,0.3); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .contact-detail-text strong { display:block; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--primary); margin-bottom:4px; }
+    .contact-detail-text span { font-size:14px; color:#5a4e3e; line-height:1.6; }
+    .res-form-box { background:var(--dark); padding:48px; }
+    .res-form-box h3 { font-family:'Playfair Display',serif; font-size:28px; color:#f5e6cc; margin-bottom:28px; }
+    .form-group { margin-bottom:16px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width:100%; background:#2e2010; border:1px solid #3a2e1e;
+      color:#e8d5b0; padding:12px 16px; font-family:'Lato',sans-serif;
+      font-size:14px; outline:none; transition:border-color 0.2s;
     }
-    .add-form.open { display:block; }
-    .add-form h2 { font-size:18px; color:#1a1208; margin-bottom:20px; }
-    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    .form-group { display:flex; flex-direction:column; gap:6px; }
-    .form-group.full { grid-column:span 2; }
-    .form-group label { font-size:12px; font-weight:600; color:#555; letter-spacing:0.5px; }
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      padding:10px 14px; border:1px solid #ddd;
-      border-radius:6px; font-size:14px;
-      font-family:'Segoe UI',sans-serif;
-      outline:none; transition:border-color 0.2s;
-    }
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus { border-color:#c8913a; }
-    .form-group textarea { resize:vertical; min-height:80px; }
-    .checkbox-row { display:flex; align-items:center; gap:8px; }
-    .checkbox-row input[type=checkbox] { width:16px; height:16px; accent-color:#c8913a; }
-    .form-actions { display:flex; gap:12px; margin-top:20px; }
-    .btn-submit {
-      background:#c8913a; color:#fff;
-      border:none; padding:11px 28px;
-      font-size:14px; font-weight:600;
-      cursor:pointer; border-radius:6px;
-    }
-    .btn-cancel {
-      background:#f0f0f0; color:#555;
-      border:none; padding:11px 22px;
-      font-size:14px; cursor:pointer;
-      border-radius:6px;
-    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--primary); }
+    .form-group select option { background:#2e2010; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-msg { padding:12px 16px; border-radius:4px; font-size:14px; margin-bottom:16px; display:none; }
+    .form-msg.success { background:rgba(39,174,96,0.2); color:#27ae60; border:1px solid rgba(39,174,96,0.3); display:block; }
+    .form-msg.error   { background:rgba(231,76,60,0.2);  color:#e74c3c; border:1px solid rgba(231,76,60,0.3);  display:block; }
 
-    /* Table */
-    .table-wrap {
-      background:#fff; border-radius:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.06);
-      overflow:hidden;
+    /* FOOTER */
+    footer { background:#0e0b04; padding:48px 60px 32px; text-align:center; }
+    .footer-logo { font-family:'Playfair Display',serif; font-size:32px; color:var(--primary); font-style:italic; margin-bottom:16px; }
+    .footer-links { display:flex; justify-content:center; gap:28px; list-style:none; margin-bottom:28px; flex-wrap:wrap; }
+    .footer-links a { color:#6a5a44; font-size:11px; letter-spacing:2px; text-transform:uppercase; text-decoration:none; transition:color 0.2s; }
+    .footer-links a:hover { color:var(--primary); }
+    .footer-divider { border:none; border-top:1px solid #2e2010; margin:0 0 24px; }
+    .footer-copy { font-size:12px; color:#4a3a28; }
+
+    /* TOAST */
+    #toast {
+      position:fixed; bottom:30px; right:30px; z-index:9999;
+      padding:14px 24px; border-radius:8px; font-size:14px;
+      font-weight:600; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.2);
     }
-    table { width:100%; border-collapse:collapse; }
-    thead tr { background:#1a1208; }
-    thead th {
-      padding:14px 18px; text-align:left;
-      font-size:11px; letter-spacing:1px;
-      text-transform:uppercase; color:#c8913a;
-    }
-    tbody tr { border-bottom:1px solid #f0f0f0; transition:background 0.15s; }
-    tbody tr:hover { background:#fffbf5; }
-    td { padding:14px 18px; font-size:14px; vertical-align:middle; }
+    #toast.success { background:#27ae60; color:#fff; }
+    #toast.error   { background:#e74c3c; color:#fff; }
 
-    .item-name { font-weight:600; color:#1a1208; }
-    .item-desc { font-size:12px; color:#999; margin-top:3px; max-width:250px; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes scrollPulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
 
-    .category-badge {
-      display:inline-block; padding:3px 12px;
-      border-radius:20px; font-size:11px;
-      font-weight:600; letter-spacing:0.5px;
-    }
-    .cat-starters  { background:#fff3cd; color:#856404; }
-    .cat-mains     { background:#d1ecf1; color:#0c5460; }
-    .cat-desserts  { background:#f8d7da; color:#721c24; }
-    .cat-drinks    { background:#d4edda; color:#155724; }
-
-    .price { font-weight:700; color:#c8913a; font-size:15px; }
-
-    .status-badge {
-      display:inline-block; padding:4px 12px;
-      border-radius:20px; font-size:11px; font-weight:600;
-    }
-    .status-on  { background:#d4edda; color:#155724; }
-    .status-off { background:#f8d7da; color:#721c24; }
-
-    .star { font-size:18px; cursor:pointer; }
-
-    .actions { display:flex; gap:8px; }
-    .btn-sm {
-      padding:6px 14px; border:none; border-radius:4px;
-      font-size:12px; font-weight:600; cursor:pointer;
-      text-decoration:none; display:inline-block;
-      transition:opacity 0.2s;
-    }
-    .btn-sm:hover { opacity:0.8; }
-    .btn-toggle  { background:#17a2b8; color:#fff; }
-    .btn-edit    { background:#f0a500; color:#fff; }
-    .btn-del     { background:#e74c3c; color:#fff; }
-
-    .img-thumb {
-      width:48px; height:48px; border-radius:6px;
-      object-fit:cover; background:#f0f0f0;
-    }
-    .no-img {
-      width:48px; height:48px; border-radius:6px;
-      background:#f0f0f0; display:flex;
-      align-items:center; justify-content:center;
-      font-size:22px;
-    }
-
-    .empty-row td {
-      text-align:center; padding:40px;
-      color:#aaa; font-size:15px;
+    @media(max-width:900px) {
+      nav { padding:0 20px; }
+      nav.scrolled { padding:0 20px; }
+      .nav-links { display:none; flex-direction:column; position:absolute; top:70px; left:0; width:100%; background:#1a1208; padding:20px; }
+      .nav-links.open { display:flex; }
+      .nav-toggle { display:block; }
+      #about, #reservation { grid-template-columns:1fr; gap:40px; padding:60px 20px; }
+      #menu, #specials, #gallery { padding:60px 20px; }
+      .specials-grid { grid-template-columns:1fr; }
+      .gallery-grid { grid-template-columns:1fr 1fr; grid-template-rows:repeat(3,180px); }
+      .gallery-cell:first-child { grid-column:span 2; grid-row:span 1; }
+      .stats-row { gap:16px; }
+      .form-row { grid-template-columns:1fr; }
+      .about-img-box { height:320px; }
+      .about-badge { bottom:-10px; right:-10px; width:80px; height:80px; }
+      .about-badge .yr { font-size:18px; }
     }
   </style>
 </head>
 <body>
 
-<!-- Sidebar -->
-<div class="sidebar">
-  <div class="sidebar-logo">DineEase <span>Admin Panel</span></div>
-  <a href="dashboard.php"    class="nav-item"><span class="icon">📊</span> Dashboard</a>
-  <a href="reservations.php" class="nav-item"><span class="icon">📅</span> Reservations</a>
-  <a href="menu.php"         class="nav-item active"><span class="icon">🍽️</span> Menu Items</a>
-  <a href="messages.php"     class="nav-item"><span class="icon">✉️</span> Messages</a>
-  <a href="logout.php"       class="nav-item" style="position:absolute;bottom:20px;width:100%;">
-    <span class="icon">🚪</span> Logout
-  </a>
-</div>
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="#" class="nav-logo">DineEase</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#menu">Menu</a></li>
+    <li><a href="#specials">Experience</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#reservation" class="nav-reserve">Reserve</a></li>
+  </ul>
+</nav>
 
-<!-- Main -->
-<div class="main">
-
-  <div class="page-header">
-    <h1>🍽️ Menu Management</h1>
-    <button class="btn-open-form" onclick="toggleForm()">+ Add New Item</button>
-  </div>
-
-  <?php if ($success): ?>
-    <div class="alert success">✅ <?= $success ?></div>
-  <?php endif; ?>
-  <?php if ($error): ?>
-    <div class="alert error">❌ <?= $error ?></div>
-  <?php endif; ?>
-
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="num"><?= $total ?></div>
-      <div class="label">Total Items</div>
-    </div>
-    <div class="stat-card">
-      <div class="num" style="color:#27ae60"><?= $available ?></div>
-      <div class="label">Available Items</div>
-    </div>
-    <div class="stat-card">
-      <div class="num" style="color:#c8913a"><?= $featured ?></div>
-      <div class="label">Featured Items</div>
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-pattern"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Fine Dining · Sri Lankan · Seafood</div>
+    <h1 class="hero-title">
+      DineEase<br/>
+      <em>Authentic Flavours,<br/>Timeless Moments</em>
+    </h1>
+    <p class="hero-desc">A culinary journey through the finest ingredients, prepared with passion and served with love in the heart of Negombo.</p>
+    <div class="hero-btns">
+      <a href="#menu"        class="btn-primary">View Our Menu</a>
+      <a href="#reservation" class="btn-outline">Reserve a Table</a>
     </div>
   </div>
+  <div class="scroll-hint">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
 
-  <!-- Add Form -->
-  <div class="add-form" id="add-form">
-    <h2>Add New Menu Item</h2>
-    <form method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="action" value="add"/>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Item Name *</label>
-          <input type="text" name="name" placeholder="e.g. Grilled Lobster" required/>
-        </div>
-        <div class="form-group">
-          <label>Price (Rs.) *</label>
-          <input type="number" name="price" step="0.01" placeholder="e.g. 3500" required/>
-        </div>
-        <div class="form-group">
-          <label>Category *</label>
-          <select name="category" required>
-            <option value="">-- Select Category --</option>
-            <option value="starters">Starters</option>
-            <option value="mains">Main Course</option>
-            <option value="desserts">Desserts</option>
-            <option value="drinks">Drinks</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Item Photo</label>
-          <input type="file" name="image" accept="image/*"/>
-        </div>
-        <div class="form-group full">
-          <label>Description</label>
-          <textarea name="description" placeholder="Describe the dish..."></textarea>
-        </div>
-        <div class="form-group">
-          <label>&nbsp;</label>
-          <div class="checkbox-row">
-            <input type="checkbox" name="is_featured" id="featured"/>
-            <label for="featured" style="font-size:14px; font-weight:400;">Mark as Featured / Chef's Pick</label>
+<!-- ABOUT — real restaurant photo -->
+<section id="about">
+  <div class="about-img">
+    <div class="about-img-box">
+      <img
+        src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80"
+        alt="DineEase Restaurant interior"
+        onerror="this.parentElement.style.background='linear-gradient(135deg,#2d1f0a,#4a3520)';this.style.display='none';"
+      />
+    </div>
+    <div class="about-badge">
+      <span class="yr">Est.</span>
+      <span class="yr-lbl">2005</span>
+    </div>
+  </div>
+  <div>
+    <span class="section-tag">Our Story</span>
+    <h2 class="section-heading">Where Every Meal<br/>Becomes a <em>Memory</em></h2>
+    <p class="section-text">We believe that great food is more than just nourishment — it is an experience that brings people together, creates memories, and tells a story of our land, our culture, and our people.</p>
+    <p class="section-text">From the freshest catch at Negombo's famous fish market to the spices of our herb garden, every ingredient is chosen with care and every dish prepared with love.</p>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num">500+</div><div class="stat-lbl">Happy Guests Daily</div></div>
+      <div class="stat"><div class="stat-num">80+</div><div class="stat-lbl">Dishes on Menu</div></div>
+      <div class="stat"><div class="stat-num">20+</div><div class="stat-lbl">Years of Excellence</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu">
+  <div class="menu-header">
+    <span class="section-tag">Our Selection</span>
+    <h2 class="section-heading">Crafted With <em>Passion</em></h2>
+  </div>
+  <div class="menu-tabs">
+    <button class="tab-btn active" onclick="showTab('starters',this)">Starters</button>
+    <button class="tab-btn"        onclick="showTab('mains',this)">Main Course</button>
+    <button class="tab-btn"        onclick="showTab('desserts',this)">Desserts</button>
+    <button class="tab-btn"        onclick="showTab('drinks',this)">Drinks</button>
+  </div>
+
+  <!-- STARTERS -->
+  <div class="menu-grid" id="tab-starters">
+    <?php if ($starters->num_rows === 0): ?>
+      <div class="no-items">🍽️ No starters available right now.</div>
+    <?php else: ?>
+      <?php while ($item = $starters->fetch_assoc()): ?>
+        <div class="menu-card">
+          <?php if (!empty($item['image'])): ?>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif (!empty($item['image_url'])): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php else: ?>
+            <div class="menu-card-img-placeholder">🥗</div>
+          <?php endif; ?>
+          <div class="menu-card-body">
+            <div class="menu-card-top">
+              <span class="menu-card-name"><?= htmlspecialchars($item['name']) ?></span>
+              <span class="menu-card-price">Rs. <?= number_format($item['price'],0) ?></span>
+            </div>
+            <p class="menu-card-desc"><?= htmlspecialchars($item['description']) ?></p>
+            <?php if ($item['is_featured']): ?><span class="menu-tag">Chef's Pick</span><?php endif; ?>
           </div>
         </div>
+      <?php endwhile; ?>
+    <?php endif; ?>
+  </div>
+
+  <!-- MAINS -->
+  <div class="menu-grid" id="tab-mains" style="display:none">
+    <?php if ($mains->num_rows === 0): ?>
+      <div class="no-items">🍽️ No main course items available right now.</div>
+    <?php else: ?>
+      <?php while ($item = $mains->fetch_assoc()): ?>
+        <div class="menu-card">
+          <?php if (!empty($item['image'])): ?>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif (!empty($item['image_url'])): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php else: ?>
+            <div class="menu-card-img-placeholder">🍛</div>
+          <?php endif; ?>
+          <div class="menu-card-body">
+            <div class="menu-card-top">
+              <span class="menu-card-name"><?= htmlspecialchars($item['name']) ?></span>
+              <span class="menu-card-price">Rs. <?= number_format($item['price'],0) ?></span>
+            </div>
+            <p class="menu-card-desc"><?= htmlspecialchars($item['description']) ?></p>
+            <?php if ($item['is_featured']): ?><span class="menu-tag">Chef's Pick</span><?php endif; ?>
+          </div>
+        </div>
+      <?php endwhile; ?>
+    <?php endif; ?>
+  </div>
+
+  <!-- DESSERTS -->
+  <div class="menu-grid" id="tab-desserts" style="display:none">
+    <?php if ($desserts->num_rows === 0): ?>
+      <div class="no-items">🍽️ No desserts available right now.</div>
+    <?php else: ?>
+      <?php while ($item = $desserts->fetch_assoc()): ?>
+        <div class="menu-card">
+          <?php if (!empty($item['image'])): ?>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif (!empty($item['image_url'])): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php else: ?>
+            <div class="menu-card-img-placeholder">🍮</div>
+          <?php endif; ?>
+          <div class="menu-card-body">
+            <div class="menu-card-top">
+              <span class="menu-card-name"><?= htmlspecialchars($item['name']) ?></span>
+              <span class="menu-card-price">Rs. <?= number_format($item['price'],0) ?></span>
+            </div>
+            <p class="menu-card-desc"><?= htmlspecialchars($item['description']) ?></p>
+            <?php if ($item['is_featured']): ?><span class="menu-tag">Chef's Pick</span><?php endif; ?>
+          </div>
+        </div>
+      <?php endwhile; ?>
+    <?php endif; ?>
+  </div>
+
+  <!-- DRINKS -->
+  <div class="menu-grid" id="tab-drinks" style="display:none">
+    <?php if ($drinks->num_rows === 0): ?>
+      <div class="no-items">🍽️ No drinks available right now.</div>
+    <?php else: ?>
+      <?php while ($item = $drinks->fetch_assoc()): ?>
+        <div class="menu-card">
+          <?php if (!empty($item['image'])): ?>
+            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif (!empty($item['image_url'])): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php else: ?>
+            <div class="menu-card-img-placeholder">🥤</div>
+          <?php endif; ?>
+          <div class="menu-card-body">
+            <div class="menu-card-top">
+              <span class="menu-card-name"><?= htmlspecialchars($item['name']) ?></span>
+              <span class="menu-card-price">Rs. <?= number_format($item['price'],0) ?></span>
+            </div>
+            <p class="menu-card-desc"><?= htmlspecialchars($item['description']) ?></p>
+            <?php if ($item['is_featured']): ?><span class="menu-tag">Chef's Pick</span><?php endif; ?>
+          </div>
+        </div>
+      <?php endwhile; ?>
+    <?php endif; ?>
+  </div>
+</section>
+
+<!-- SPECIALS -->
+<section id="specials">
+  <span class="section-tag">Why Choose Us</span>
+  <h2 class="section-heading">The <em>DineEase</em> Experience</h2>
+  <div class="specials-grid">
+    <div class="special-card">
+      <div class="special-icon">🦞</div>
+      <h3>Fresh Catch Daily</h3>
+      <p>Our seafood arrives fresh from Negombo's famous fishing harbour every morning, guaranteeing the finest quality on your plate.</p>
+      <span class="special-ribbon">Daily</span>
+    </div>
+    <div class="special-card">
+      <div class="special-icon">👨‍🍳</div>
+      <h3>Master Chefs</h3>
+      <p>Our culinary team brings over 20 years of combined experience in Sri Lankan, Asian, and Continental cuisine.</p>
+    </div>
+    <div class="special-card">
+      <div class="special-icon">🌿</div>
+      <h3>Garden to Table</h3>
+      <p>Herbs, spices, and vegetables sourced from our own organic garden and trusted local farmers every single day.</p>
+      <span class="special-ribbon">Organic</span>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY — real photos hosted on server -->
+<section id="gallery">
+  <div style="text-align:center">
+    <span class="section-tag">Visual Story</span>
+    <h2 class="section-heading" style="color:#f5e6cc">A Feast for the <em>Eyes</em></h2>
+  </div>
+  <div class="gallery-grid">
+    <div class="gallery-cell">
+      <img src="admin/uploads/menu/main_lobster.jpg"      alt="Lobster dish"/>
+    </div>
+    <div class="gallery-cell">
+      <img src="admin/uploads/menu/main_prawn_curry.jpg"  alt="Prawn curry"/>
+    </div>
+    <div class="gallery-cell">
+      <img src="admin/uploads/menu/main_crab.jpg"         alt="Butter garlic crab"/>
+    </div>
+    <div class="gallery-cell">
+      <img src="admin/uploads/menu/main_steak.jpg"        alt="Grilled steak"/>
+    </div>
+    <div class="gallery-cell">
+      <img src="admin/uploads/menu/dessert_lavacake.jpg"  alt="Chocolate lava cake"/>
+    </div>
+  </div>
+</section>
+
+<!-- RESERVATION -->
+<section id="reservation">
+  <div class="res-info">
+    <span class="section-tag">Book a Table</span>
+    <h2>Visit Us &amp; Reserve<br/>Your <em>Table</em></h2>
+    <br/>
+    <div class="contact-detail">
+      <div class="contact-icon">📍</div>
+      <div class="contact-detail-text">
+        <strong>Address</strong>
+        <span>123 Lewis Place, Negombo, Sri Lanka</span>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn-submit">✔ Add Item</button>
-        <button type="button" class="btn-cancel" onclick="toggleForm()">Cancel</button>
+    </div>
+    <div class="contact-detail">
+      <div class="contact-icon">📞</div>
+      <div class="contact-detail-text">
+        <strong>Phone</strong>
+        <span>+94 31 222 3456</span>
       </div>
+    </div>
+    <div class="contact-detail">
+      <div class="contact-icon">✉️</div>
+      <div class="contact-detail-text">
+        <strong>Email</strong>
+        <span>info@dineease.lk</span>
+      </div>
+    </div>
+    <div class="contact-detail">
+      <div class="contact-icon">🕐</div>
+      <div class="contact-detail-text">
+        <strong>Opening Hours</strong>
+        <span>Daily 11:00 AM – 11:00 PM</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="res-form-box">
+    <h3>Reserve Your Table</h3>
+    <div id="res-msg" class="form-msg"></div>
+    <form id="res-form">
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" name="name" placeholder="Your Full Name *" required/>
+        </div>
+        <div class="form-group">
+          <input type="text" name="phone" placeholder="Phone Number *" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <input type="email" name="email" placeholder="Email Address (optional)"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <input type="date" name="date" required/>
+        </div>
+        <div class="form-group">
+          <select name="guests" required>
+            <option value="">Number of Guests</option>
+            <option value="1">1 Guest</option>
+            <option value="2">2 Guests</option>
+            <option value="3">3 Guests</option>
+            <option value="4">4 Guests</option>
+            <option value="5">5 Guests</option>
+            <option value="6+">6+ Guests</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <select name="time" required>
+          <option value="">Select Time</option>
+          <option value="11:00 AM">11:00 AM</option>
+          <option value="12:00 PM">12:00 PM</option>
+          <option value="01:00 PM">01:00 PM</option>
+          <option value="02:00 PM">02:00 PM</option>
+          <option value="06:00 PM">06:00 PM</option>
+          <option value="07:00 PM">07:00 PM</option>
+          <option value="08:00 PM">08:00 PM</option>
+          <option value="09:00 PM">09:00 PM</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <textarea name="message" rows="3" placeholder="Special requests or dietary requirements..."></textarea>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;border:none;padding:16px;font-size:14px;" id="res-btn">
+        Reserve My Table
+      </button>
     </form>
   </div>
+</section>
 
-  <!-- Filter Tabs -->
-  <div class="filter-tabs">
-    <a href="?cat=all"      class="filter-tab <?= $filter==='all'      ? 'active':'' ?>">All (<?= $total ?>)</a>
-    <a href="?cat=starters" class="filter-tab <?= $filter==='starters' ? 'active':'' ?>">🥗 Starters</a>
-    <a href="?cat=mains"    class="filter-tab <?= $filter==='mains'    ? 'active':'' ?>">🍛 Mains</a>
-    <a href="?cat=desserts" class="filter-tab <?= $filter==='desserts' ? 'active':'' ?>">🍮 Desserts</a>
-    <a href="?cat=drinks"   class="filter-tab <?= $filter==='drinks'   ? 'active':'' ?>">🥤 Drinks</a>
-  </div>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">DineEase</div>
+  <ul class="footer-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#menu">Menu</a></li>
+    <li><a href="#specials">Experience</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#reservation">Contact</a></li>
+    <li><a href="admin/login.php">Admin</a></li>
+  </ul>
+  <hr class="footer-divider"/>
+  <p class="footer-copy">© <?= date('Y') ?> DineEase. All rights reserved. | Negombo, Sri Lanka</p>
+</footer>
 
-  <!-- Table -->
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Photo</th>
-          <th>Item</th>
-          <th>Category</th>
-          <th>Price</th>
-          <th>Status</th>
-          <th>Featured</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php if ($items->num_rows === 0): ?>
-          <tr class="empty-row">
-            <td colspan="7">🍽️ No menu items found. Add your first item above!</td>
-          </tr>
-        <?php else: ?>
-          <?php while ($item = $items->fetch_assoc()): ?>
-            <tr>
-              <td>
-                <?php if ($item['image']): ?>
-                  <img src="uploads/menu/<?= htmlspecialchars($item['image']) ?>"
-                       class="img-thumb" alt=""/>
-                <?php else: ?>
-                  <div class="no-img">🍽️</div>
-                <?php endif; ?>
-              </td>
-              <td>
-                <div class="item-name"><?= htmlspecialchars($item['name']) ?></div>
-                <div class="item-desc"><?= htmlspecialchars(substr($item['description'],0,60)) ?>...</div>
-              </td>
-              <td>
-                <span class="category-badge cat-<?= $item['category'] ?>">
-                  <?= ucfirst($item['category']) ?>
-                </span>
-              </td>
-              <td><span class="price">Rs. <?= number_format($item['price'],2) ?></span></td>
-              <td>
-                <span class="status-badge <?= $item['is_available'] ? 'status-on':'status-off' ?>">
-                  <?= $item['is_available'] ? '✔ Available' : '✖ Hidden' ?>
-                </span>
-              </td>
-              <td>
-                <a href="?feature=<?= $item['id'] ?>" class="star" title="Toggle featured">
-                  <?= $item['is_featured'] ? '⭐' : '☆' ?>
-                </a>
-              </td>
-              <td>
-                <div class="actions">
-                  <a href="?toggle=<?= $item['id'] ?>" class="btn-sm btn-toggle">
-                    <?= $item['is_available'] ? 'Hide' : 'Show' ?>
-                  </a>
-                  <a href="edit_item.php?id=<?= $item['id'] ?>" class="btn-sm btn-edit">Edit</a>
-                  <a href="?delete=<?= $item['id'] ?>"
-                     onclick="return confirm('Delete <?= htmlspecialchars($item['name']) ?>?')"
-                     class="btn-sm btn-del">Delete</a>
-                </div>
-              </td>
-            </tr>
-          <?php endwhile; ?>
-        <?php endif; ?>
-      </tbody>
-    </table>
-  </div>
-
-</div>
+<div id="toast"></div>
 
 <script>
-function toggleForm() {
-  const form = document.getElementById('add-form');
-  form.classList.toggle('open');
-  if (form.classList.contains('open')) {
-    form.scrollIntoView({ behavior: 'smooth' });
+  window.addEventListener('scroll', () => {
+    document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 60);
+  });
+
+  document.querySelector('input[name="date"]').min = new Date().toISOString().split('T')[0];
+
+  function showTab(tab, btn) {
+    ['starters','mains','desserts','drinks'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = 'none';
+    });
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).style.display = 'grid';
+    btn.classList.add('active');
   }
-}
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3500);
+  }
+
+  document.getElementById('res-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('res-btn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    fetch('reservation.php', { method:'POST', body: new FormData(this) })
+      .then(r => r.json())
+      .then(data => {
+        const msg = document.getElementById('res-msg');
+        msg.className = 'form-msg ' + data.status;
+        msg.textContent = data.message;
+        msg.scrollIntoView({ behavior:'smooth', block:'center' });
+        if (data.status === 'success') {
+          document.getElementById('res-form').reset();
+          showToast('🎉 Reservation received! We will confirm shortly.', 'success');
+        }
+      })
+      .catch(() => {
+        const msg = document.getElementById('res-msg');
+        msg.className = 'form-msg error';
+        msg.textContent = 'Network error. Please try again.';
+        msg.style.display = 'block';
+      })
+      .finally(() => {
+        btn.textContent = 'Reserve My Table';
+        btn.disabled = false;
+      });
+  });
 </script>
 </body>
 </html>
