@@ -334,6 +334,8 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
         <div class="menu-card">
           <?php if ($item['image']): ?>
             <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif ($item['image_url']): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥗</div>
           <?php endif; ?>
@@ -357,6 +359,8 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
         <div class="menu-card">
           <?php if ($item['image']): ?>
             <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif ($item['image_url']): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍛</div>
           <?php endif; ?>
@@ -380,6 +384,8 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
         <div class="menu-card">
           <?php if ($item['image']): ?>
             <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif ($item['image_url']): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍮</div>
           <?php endif; ?>
@@ -403,6 +409,8 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
         <div class="menu-card">
           <?php if ($item['image']): ?>
             <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php elseif ($item['image_url']): ?>
+            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥤</div>
           <?php endif; ?>
