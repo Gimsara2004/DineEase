@@ -471,7 +471,7 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
       <img src="https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Fish"/>
     </div>
     <div class="gallery-cell" style="background:none;">
-      <img src="https://images.unsplash.com/photo-1551183053-bf91798d702e?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Pasta"/>
+      <img src="https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Pasta"/>
     </div>
     <div class="gallery-cell" style="background:none;">
       <img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80" style="width:100%;height:100%;object-fit:cover;" alt="Dessert"/>
