@@ -335,10 +335,18 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
     <?php else: ?>
       <?php while ($item = $starters->fetch_assoc()): ?>
         <div class="menu-card">
-          <?php if ($item['image']): ?>
-            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
-          <?php elseif ($item['image_url']): ?>
-            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php
+            $img_src = '';
+            if (!empty(trim($item['image']))) {
+              $img_src = 'admin/uploads/menu/' . htmlspecialchars($item['image']);
+            } elseif (!empty(trim($item['image_url']))) {
+              $img_src = htmlspecialchars($item['image_url']);
+            }
+          ?>
+          <?php if ($img_src): ?>
+            <img src="<?= $img_src ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+            <div class="menu-card-img-placeholder" style="display:none">🥗</div>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥗</div>
           <?php endif; ?>
@@ -360,10 +368,18 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
     <?php else: ?>
       <?php while ($item = $mains->fetch_assoc()): ?>
         <div class="menu-card">
-          <?php if ($item['image']): ?>
-            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
-          <?php elseif ($item['image_url']): ?>
-            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php
+            $img_src = '';
+            if (!empty(trim($item['image']))) {
+              $img_src = 'admin/uploads/menu/' . htmlspecialchars($item['image']);
+            } elseif (!empty(trim($item['image_url']))) {
+              $img_src = htmlspecialchars($item['image_url']);
+            }
+          ?>
+          <?php if ($img_src): ?>
+            <img src="<?= $img_src ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+            <div class="menu-card-img-placeholder" style="display:none">🍛</div>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍛</div>
           <?php endif; ?>
@@ -385,10 +401,18 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
     <?php else: ?>
       <?php while ($item = $desserts->fetch_assoc()): ?>
         <div class="menu-card">
-          <?php if ($item['image']): ?>
-            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
-          <?php elseif ($item['image_url']): ?>
-            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php
+            $img_src = '';
+            if (!empty(trim($item['image']))) {
+              $img_src = 'admin/uploads/menu/' . htmlspecialchars($item['image']);
+            } elseif (!empty(trim($item['image_url']))) {
+              $img_src = htmlspecialchars($item['image_url']);
+            }
+          ?>
+          <?php if ($img_src): ?>
+            <img src="<?= $img_src ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+            <div class="menu-card-img-placeholder" style="display:none">🍮</div>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🍮</div>
           <?php endif; ?>
@@ -410,10 +434,18 @@ $drinks    = $conn->query("SELECT * FROM menu_items WHERE category='drinks'    A
     <?php else: ?>
       <?php while ($item = $drinks->fetch_assoc()): ?>
         <div class="menu-card">
-          <?php if ($item['image']): ?>
-            <img src="admin/uploads/menu/<?= htmlspecialchars($item['image']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
-          <?php elseif ($item['image_url']): ?>
-            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"/>
+          <?php
+            $img_src = '';
+            if (!empty(trim($item['image']))) {
+              $img_src = 'admin/uploads/menu/' . htmlspecialchars($item['image']);
+            } elseif (!empty(trim($item['image_url']))) {
+              $img_src = htmlspecialchars($item['image_url']);
+            }
+          ?>
+          <?php if ($img_src): ?>
+            <img src="<?= $img_src ?>" class="menu-card-img" alt="<?= htmlspecialchars($item['name']) ?>"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+            <div class="menu-card-img-placeholder" style="display:none">🥤</div>
           <?php else: ?>
             <div class="menu-card-img-placeholder">🥤</div>
           <?php endif; ?>
